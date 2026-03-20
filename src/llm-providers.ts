@@ -25,6 +25,11 @@ import {
   BEDROCK_META_MODELS,
 } from "./constants.js";
 import { sanitizeCoordinates, type ActionDecision } from "./actions.js";
+import {
+  getCopilotToken,
+  forceRefreshCopilotToken,
+  isCopilotAutoRefreshAvailable,
+} from "./copilot-token.js";
 
 // ===========================================
 // System Prompt — all 22 actions + planning
@@ -256,9 +261,17 @@ export function trimMessages(
 class OpenAIProvider implements LLMProvider {
   private client: OpenAI;
   private model: string;
+  private isCopilot: boolean;
+  private currentToken: string;
   readonly capabilities: { supportsImages: boolean; supportsStreaming: boolean };
 
   constructor() {
+    this.isCopilot =
+      Config.LLM_PROVIDER === "openai" &&
+      !!Config.OPENAI_BASE_URL?.includes("githubcopilot") &&
+      isCopilotAutoRefreshAvailable();
+    this.currentToken = Config.OPENAI_API_KEY;
+
     if (Config.LLM_PROVIDER === "groq") {
       this.client = new OpenAI({
         apiKey: Config.GROQ_API_KEY,
@@ -289,6 +302,38 @@ class OpenAIProvider implements LLMProvider {
       this.model = Config.OPENAI_MODEL;
       this.capabilities = { supportsImages: true, supportsStreaming: true };
     }
+  }
+
+  /** Rebuild the OpenAI client with a fresh Copilot token */
+  private rebuildClient(token: string): void {
+    this.client = new OpenAI({
+      apiKey: token,
+      baseURL: Config.OPENAI_BASE_URL,
+      defaultHeaders: {
+        "Editor-Version": "vscode/1.95.0",
+        "Editor-Plugin-Version": "copilot/1.200.0",
+        "Copilot-Integration-Id": "vscode-chat",
+      },
+    });
+  }
+
+  /** Proactive: ensure token is fresh before each request */
+  private async ensureFreshToken(): Promise<void> {
+    if (!this.isCopilot) return;
+    const token = await getCopilotToken();
+    // Only rebuild if token actually changed
+    if (token !== this.currentToken) {
+      this.rebuildClient(token);
+      this.currentToken = token;
+    }
+  }
+
+  /** Check if an error is a 401/403 auth failure */
+  private isAuthError(err: unknown): boolean {
+    if (err instanceof OpenAI.APIError) {
+      return err.status === 401 || err.status === 403;
+    }
+    return false;
   }
 
   private toOpenAIMessages(
@@ -326,26 +371,65 @@ class OpenAIProvider implements LLMProvider {
   }
 
   async getDecision(messages: ChatMessage[]): Promise<ActionDecision> {
+    await this.ensureFreshToken();
     const openaiMessages = this.toOpenAIMessages(messages);
-    const response = await this.client.chat.completions.create({
-      model: this.model,
-      response_format: { type: "json_object" },
-      messages: openaiMessages,
-    });
-    return parseJsonResponse(response.choices[0].message.content ?? "{}");
+    try {
+      const response = await this.client.chat.completions.create({
+        model: this.model,
+        response_format: { type: "json_object" },
+        messages: openaiMessages,
+      });
+      return parseJsonResponse(response.choices[0].message.content ?? "{}");
+    } catch (err) {
+      if (this.isCopilot && this.isAuthError(err)) {
+        console.log("[copilot-token] 401/403 detected, force-refreshing token...");
+        const freshToken = await forceRefreshCopilotToken();
+        this.rebuildClient(freshToken);
+        this.currentToken = freshToken;
+        const response = await this.client.chat.completions.create({
+          model: this.model,
+          response_format: { type: "json_object" },
+          messages: openaiMessages,
+        });
+        return parseJsonResponse(response.choices[0].message.content ?? "{}");
+      }
+      throw err;
+    }
   }
 
   async *getDecisionStream(messages: ChatMessage[]): AsyncIterable<string> {
+    await this.ensureFreshToken();
     const openaiMessages = this.toOpenAIMessages(messages);
-    const stream = await this.client.chat.completions.create({
-      model: this.model,
-      response_format: { type: "json_object" },
-      messages: openaiMessages,
-      stream: true,
-    });
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) yield content;
+    try {
+      const stream = await this.client.chat.completions.create({
+        model: this.model,
+        response_format: { type: "json_object" },
+        messages: openaiMessages,
+        stream: true,
+      });
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content;
+        if (content) yield content;
+      }
+    } catch (err) {
+      if (this.isCopilot && this.isAuthError(err)) {
+        console.log("[copilot-token] 401/403 detected, force-refreshing token...");
+        const freshToken = await forceRefreshCopilotToken();
+        this.rebuildClient(freshToken);
+        this.currentToken = freshToken;
+        const stream = await this.client.chat.completions.create({
+          model: this.model,
+          response_format: { type: "json_object" },
+          messages: openaiMessages,
+          stream: true,
+        });
+        for await (const chunk of stream) {
+          const content = chunk.choices[0]?.delta?.content;
+          if (content) yield content;
+        }
+      } else {
+        throw err;
+      }
     }
   }
 }
