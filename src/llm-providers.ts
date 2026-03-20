@@ -328,10 +328,11 @@ class OpenAIProvider implements LLMProvider {
     }
   }
 
-  /** Check if an error is a 401/403 auth failure */
+  /** Check if an error is an auth failure (Copilot returns 400 for expired tokens) */
   private isAuthError(err: unknown): boolean {
     if (err instanceof OpenAI.APIError) {
-      return err.status === 401 || err.status === 403;
+      if (err.status === 401 || err.status === 403) return true;
+      if (err.status === 400 && err.message?.toLowerCase().includes("authorization")) return true;
     }
     return false;
   }

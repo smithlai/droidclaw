@@ -9,7 +9,7 @@
  *   2. Reactive refresh — called on 401 (exposed for retry logic)
  */
 
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, unlinkSync } from "fs";
 import { resolve, dirname } from "path";
 
 /** Refresh token this many seconds before actual expiration */
@@ -142,6 +142,9 @@ export async function getCopilotToken(): Promise<string> {
 export async function forceRefreshCopilotToken(): Promise<string> {
   cachedToken = null;
   cachedExpiresAt = 0;
+  // Delete cache file so copilot_auth.py is forced to re-exchange with GitHub
+  // (otherwise it returns the stale cached token that the API already rejected)
+  try { unlinkSync(COPILOT_TOKEN_FILE); } catch { /* ignore if missing */ }
   return callAuthScript();
 }
 
