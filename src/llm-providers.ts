@@ -275,7 +275,17 @@ class OpenAIProvider implements LLMProvider {
       // Vision models (llava, llama3.2-vision, etc.) support images
       this.capabilities = { supportsImages: true, supportsStreaming: true };
     } else {
-      this.client = new OpenAI({ apiKey: Config.OPENAI_API_KEY });
+      this.client = new OpenAI({
+        apiKey: Config.OPENAI_API_KEY,
+        ...(Config.OPENAI_BASE_URL && { baseURL: Config.OPENAI_BASE_URL }),
+        defaultHeaders: {
+          ...(Config.OPENAI_BASE_URL?.includes("githubcopilot") && {
+            "Editor-Version": "vscode/1.95.0",
+            "Editor-Plugin-Version": "copilot/1.200.0",
+            "Copilot-Integration-Id": "vscode-chat",
+          }),
+        },
+      });
       this.model = Config.OPENAI_MODEL;
       this.capabilities = { supportsImages: true, supportsStreaming: true };
     }

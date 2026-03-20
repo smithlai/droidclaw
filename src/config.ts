@@ -67,6 +67,7 @@ export const Config = {
   // OpenAI Configuration
   OPENAI_API_KEY: env("OPENAI_API_KEY"),
   OPENAI_MODEL: env("OPENAI_MODEL", DEFAULT_OPENAI_MODEL),
+  OPENAI_BASE_URL: env("OPENAI_BASE_URL"),
 
   // AWS Bedrock Configuration
   AWS_REGION: env("AWS_REGION", "us-east-1"),
