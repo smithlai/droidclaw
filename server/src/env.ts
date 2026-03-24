@@ -1,5 +1,10 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 export const env = {
-  DATABASE_URL: process.env.DATABASE_URL!,
+  DATABASE_PATH: process.env.DATABASE_PATH || path.join(__dirname, "..", "data", "droidclaw.db"),
   PORT: parseInt(process.env.PORT || "8080"),
   CORS_ORIGIN: process.env.CORS_ORIGIN || "http://localhost:5173",
   INTERNAL_SECRET: process.env.INTERNAL_SECRET || "",
@@ -12,7 +17,3 @@ export const env = {
   QSTASH_NEXT_SIGNING_KEY: process.env.QSTASH_NEXT_SIGNING_KEY || "",
   SERVER_PUBLIC_URL: process.env.SERVER_PUBLIC_URL || "",
 };
-
-if (!env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is not set");
-}

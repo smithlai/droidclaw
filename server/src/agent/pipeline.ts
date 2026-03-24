@@ -130,7 +130,7 @@ async function persistQuickSession(
       id: crypto.randomUUID(),
       sessionId,
       stepNumber: 1,
-      action,
+      action: JSON.stringify(action),
       reasoning: `${stage}: direct action`,
       result: "OK",
     });

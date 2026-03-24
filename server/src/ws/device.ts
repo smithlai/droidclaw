@@ -58,7 +58,7 @@ async function upsertDevice(
   if (existing.length > 0) {
     await db
       .update(device)
-      .set({ status: "online", lastSeen: new Date(), deviceInfo: deviceInfo ?? null })
+      .set({ status: "online", lastSeen: new Date(), deviceInfo: deviceInfo ? JSON.stringify(deviceInfo) : null })
       .where(eq(device.id, existing[0].id));
     return existing[0].id;
   }
@@ -70,7 +70,7 @@ async function upsertDevice(
     name,
     status: "online",
     lastSeen: new Date(),
-    deviceInfo: deviceInfo ?? null,
+    deviceInfo: deviceInfo ? JSON.stringify(deviceInfo) : null,
   });
   return id;
 }
@@ -327,12 +327,11 @@ export async function handleDeviceMessage(
       if (persistentDeviceId) {
         const apps = (msg as unknown as { apps: Array<{ packageName: string; label: string; intents?: string[] }> }).apps;
         // Merge apps into existing deviceInfo
+        const existingApps = await db.select({ info: device.deviceInfo }).from(device).where(eq(device.id, persistentDeviceId)).limit(1);
+        const existingInfo = existingApps[0]?.info ? JSON.parse(existingApps[0].info as string) : {};
         db.update(device)
           .set({
-            deviceInfo: {
-              ...(await db.select({ info: device.deviceInfo }).from(device).where(eq(device.id, persistentDeviceId)).limit(1).then(r => (r[0]?.info as Record<string, unknown>) ?? {})),
-              installedApps: apps,
-            },
+            deviceInfo: JSON.stringify({ ...existingInfo, installedApps: apps }),
           })
           .where(eq(device.id, persistentDeviceId))
           .catch((err) => console.error(`[DB] Failed to store installed apps: ${err}`));
@@ -347,13 +346,11 @@ export async function handleDeviceMessage(
       const userId = ws.data.userId;
       if (persistentDeviceId && userId) {
         // Update deviceInfo in DB with latest battery
+        const existingHb = await db.select({ info: device.deviceInfo }).from(device).where(eq(device.id, persistentDeviceId)).limit(1);
+        const existingHbInfo = existingHb[0]?.info ? JSON.parse(existingHb[0].info as string) : {};
         db.update(device)
           .set({
-            deviceInfo: {
-              ...(await db.select({ info: device.deviceInfo }).from(device).where(eq(device.id, persistentDeviceId)).limit(1).then(r => (r[0]?.info as Record<string, unknown>) ?? {})),
-              batteryLevel: msg.batteryLevel,
-              isCharging: msg.isCharging,
-            },
+            deviceInfo: JSON.stringify({ ...existingHbInfo, batteryLevel: msg.batteryLevel, isCharging: msg.isCharging }),
             lastSeen: new Date(),
           })
           .where(eq(device.id, persistentDeviceId))

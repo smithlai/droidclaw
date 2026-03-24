@@ -94,7 +94,7 @@ investigate.post("/:sessionId", async (c) => {
 
   const transcript = transcriptSteps
     .map((s) => {
-      const action = JSON.stringify(s.action);
+      const action = s.action ?? "null";
       return `Step ${s.stepNumber}: Action=${action} | Reason=${s.reasoning ?? "—"} | Result=${s.result ?? "—"}`;
     })
     .join("\n");

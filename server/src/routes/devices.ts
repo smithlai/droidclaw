@@ -23,7 +23,7 @@ devices.get("/", async (c) => {
       deviceId: d.id,
       name: d.name,
       status: d.status,
-      deviceInfo: d.deviceInfo,
+      deviceInfo: d.deviceInfo ? JSON.parse(d.deviceInfo as string) : null,
       lastSeen: d.lastSeen?.toISOString() ?? d.createdAt.toISOString(),
       connectedAt: d.createdAt.toISOString(),
     }))

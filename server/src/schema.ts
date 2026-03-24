@@ -1,27 +1,31 @@
-import { pgTable, text, timestamp, boolean, integer, jsonb } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 
-export const user = pgTable("user", {
+export const user = sqliteTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified").default(false).notNull(),
+  emailVerified: integer("email_verified", { mode: "boolean" }).default(false).notNull(),
   image: text("image"),
   plan: text("plan"),
   polarLicenseKey: text("polar_license_key"),
   polarCustomerId: text("polar_customer_id"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
-    .defaultNow()
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
     .$onUpdate(() => new Date())
     .notNull(),
 });
 
-export const session = pgTable("session", {
+export const session = sqliteTable("session", {
   id: text("id").primaryKey(),
-  expiresAt: timestamp("expires_at").notNull(),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
   token: text("token").notNull().unique(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
     .$onUpdate(() => new Date())
     .notNull(),
   ipAddress: text("ip_address"),
@@ -31,7 +35,7 @@ export const session = pgTable("session", {
     .references(() => user.id, { onDelete: "cascade" }),
 });
 
-export const account = pgTable("account", {
+export const account = sqliteTable("account", {
   id: text("id").primaryKey(),
   accountId: text("account_id").notNull(),
   providerId: text("provider_id").notNull(),
@@ -41,29 +45,33 @@ export const account = pgTable("account", {
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   idToken: text("id_token"),
-  accessTokenExpiresAt: timestamp("access_token_expires_at"),
-  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+  accessTokenExpiresAt: integer("access_token_expires_at", { mode: "timestamp" }),
+  refreshTokenExpiresAt: integer("refresh_token_expires_at", { mode: "timestamp" }),
   scope: text("scope"),
   password: text("password"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
     .$onUpdate(() => new Date())
     .notNull(),
 });
 
-export const verification = pgTable("verification", {
+export const verification = sqliteTable("verification", {
   id: text("id").primaryKey(),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
-    .defaultNow()
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
     .$onUpdate(() => new Date())
     .notNull(),
 });
 
-export const apikey = pgTable("apikey", {
+export const apikey = sqliteTable("apikey", {
   id: text("id").primaryKey(),
   name: text("name"),
   start: text("start"),
@@ -74,22 +82,22 @@ export const apikey = pgTable("apikey", {
     .references(() => user.id, { onDelete: "cascade" }),
   refillInterval: integer("refill_interval"),
   refillAmount: integer("refill_amount"),
-  lastRefillAt: timestamp("last_refill_at"),
-  enabled: boolean("enabled").default(true),
-  rateLimitEnabled: boolean("rate_limit_enabled").default(true),
+  lastRefillAt: integer("last_refill_at", { mode: "timestamp" }),
+  enabled: integer("enabled", { mode: "boolean" }).default(true),
+  rateLimitEnabled: integer("rate_limit_enabled", { mode: "boolean" }).default(true),
   rateLimitTimeWindow: integer("rate_limit_time_window").default(86400000),
   rateLimitMax: integer("rate_limit_max").default(10),
   requestCount: integer("request_count").default(0),
   remaining: integer("remaining"),
-  lastRequest: timestamp("last_request"),
-  expiresAt: timestamp("expires_at"),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at").notNull(),
+  lastRequest: integer("last_request", { mode: "timestamp" }),
+  expiresAt: integer("expires_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
   permissions: text("permissions"),
   metadata: text("metadata"),
 });
 
-export const llmConfig = pgTable("llm_config", {
+export const llmConfig = sqliteTable("llm_config", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
@@ -97,36 +105,42 @@ export const llmConfig = pgTable("llm_config", {
   provider: text("provider").notNull(),
   apiKey: text("api_key").notNull(),
   model: text("model"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
-    .defaultNow()
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
     .$onUpdate(() => new Date())
     .notNull(),
 });
 
-export const pairingCode = pgTable("pairing_code", {
+export const pairingCode = sqliteTable("pairing_code", {
   id: text("id").primaryKey(),
   code: text("code").notNull().unique(),
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
 });
 
-export const device = pgTable("device", {
+export const device = sqliteTable("device", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
-  lastSeen: timestamp("last_seen"),
+  lastSeen: integer("last_seen", { mode: "timestamp" }),
   status: text("status").notNull().default("offline"),
-  deviceInfo: jsonb("device_info"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  deviceInfo: text("device_info"),  // was jsonb, now text (JSON string)
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
 });
 
-export const agentSession = pgTable("agent_session", {
+export const agentSession = sqliteTable("agent_session", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
@@ -137,29 +151,32 @@ export const agentSession = pgTable("agent_session", {
   goal: text("goal").notNull(),
   status: text("status").notNull().default("running"),
   stepsUsed: integer("steps_used").default(0),
-  startedAt: timestamp("started_at").defaultNow().notNull(),
-  completedAt: timestamp("completed_at"),
-  // Scheduling (QStash)
+  startedAt: integer("started_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
+  completedAt: integer("completed_at", { mode: "timestamp" }),
   qstashMessageId: text("qstash_message_id"),
-  scheduledFor: timestamp("scheduled_for"),
+  scheduledFor: integer("scheduled_for", { mode: "timestamp" }),
   scheduledDelay: integer("scheduled_delay"),
 });
 
-export const agentStep = pgTable("agent_step", {
+export const agentStep = sqliteTable("agent_step", {
   id: text("id").primaryKey(),
   sessionId: text("session_id")
     .notNull()
     .references(() => agentSession.id, { onDelete: "cascade" }),
   stepNumber: integer("step_number").notNull(),
   screenHash: text("screen_hash"),
-  action: jsonb("action"),
+  action: text("action"),  // was jsonb, now text (JSON string)
   reasoning: text("reasoning"),
   result: text("result"),
   packageName: text("package_name"),
-  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  timestamp: integer("timestamp", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
 });
 
-export const appHint = pgTable("app_hint", {
+export const appHint = sqliteTable("app_hint", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
@@ -169,5 +186,7 @@ export const appHint = pgTable("app_hint", {
   sourceSessionId: text("source_session_id").references(() => agentSession.id, {
     onDelete: "set null",
   }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .$defaultFn(() => new Date())
+    .notNull(),
 });

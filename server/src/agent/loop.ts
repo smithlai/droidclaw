@@ -284,7 +284,8 @@ export async function runAgentLoop(
         .from(deviceTable)
         .where(eq(deviceTable.id, persistentDeviceId))
         .limit(1);
-      const info = rows[0]?.info as Record<string, unknown> | null;
+      const rawInfo = rows[0]?.info;
+      const info = (typeof rawInfo === "string" ? JSON.parse(rawInfo) : rawInfo) as Record<string, unknown> | null;
       const apps = info?.installedApps as Array<{ packageName: string; label: string; intents?: string[] }> | undefined;
       if (apps && apps.length > 0) {
         // Build app list with intent capabilities
@@ -582,7 +583,7 @@ export async function runAgentLoop(
             sessionId,
             stepNumber: step + 1,
             screenHash,
-            action: action as unknown as Record<string, unknown>,
+            action: JSON.stringify(action),
             reasoning: action.reason ?? "",
             packageName: packageName ?? null,
           })
