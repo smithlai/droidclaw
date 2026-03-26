@@ -71,6 +71,7 @@ Navigation (coordinates MUST be a JSON array of TWO separate integers [x, y] —
   {"action": "tap", "coordinates": [540, 1200], "reason": "..."}
   {"action": "longpress", "coordinates": [540, 1200], "reason": "..."}
   {"action": "scroll", "direction": "up|down|left|right", "reason": "Scroll to see more content (down=below, up=above)"}
+  {"action": "swipe", "direction": "up|down|left|right", "reason": "Swipe screen"}
   {"action": "enter", "reason": "Press Enter/submit"}
   {"action": "back", "reason": "Navigate back"}
   {"action": "home", "reason": "Go to home screen"}
